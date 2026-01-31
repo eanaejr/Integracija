@@ -30,6 +30,8 @@ public class MainApp {
         JPanel input = new JPanel(new GridLayout(5, 2, 8, 8));
         JLabel lblFunc = new JLabel("Funkcija:");
         JComboBox<String> cmbFunc = new JComboBox<>(new String[]{"sin(x)", "cos(x)", "x^2"});
+        JLabel lblAlgo = new JLabel("Metoda:");
+        JComboBox<String> cmbAlgo = new JComboBox<>(new String[]{"Trapezna metoda", "Simpsonova metoda"});
         JLabel lblA = new JLabel("a:");
         JTextField txtA = new JTextField("0");
         JLabel lblB = new JLabel("b:");
@@ -42,6 +44,8 @@ public class MainApp {
 
         input.add(lblFunc);
         input.add(cmbFunc);
+        input.add(lblAlgo);
+        input.add(cmbAlgo);
         input.add(lblA);
         input.add(txtA);
         input.add(lblB);
@@ -61,9 +65,10 @@ public class MainApp {
             double a = Double.parseDouble(txtA.getText());
             double b = Double.parseDouble(txtB.getText());
             int n = Integer.parseInt(txtN.getText());
-            int method = cmbFunc.getSelectedIndex(); 
+            int functionId = cmbFunc.getSelectedIndex();
+            int algoId = cmbAlgo.getSelectedIndex();
 
-            Future<IntegrationJob> fut = service.submit(func, a, b, n, method);
+            Future<IntegrationJob> fut = service.submit(func, a, b, n, functionId, algoId);
 
             Executors.newSingleThreadExecutor().submit(() -> {
                 try {

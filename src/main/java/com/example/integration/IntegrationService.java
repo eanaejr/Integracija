@@ -19,12 +19,40 @@ public class IntegrationService {
     }
 
     
-    public Future<IntegrationJob> submit(String functionName, double a, double b, int n, int functionMethod) {
-        IntegrationJob job = new IntegrationJob(functionName, a, b, n);
+    public Future<IntegrationJob> submit(String functionName, double a, double b, int n, int functionId, int algoId) {
+        final IntegrationJob job = new IntegrationJob(functionName, a, b, n);
         return executor.submit(() -> {
-            double result = integrator.integrate(a, b, n, functionMethod);
-            job.setResult(result);
-            repo.save(job);
+
+            final int workers = ((ThreadPoolExecutor) executor).getCorePoolSize();
+            final int chunks = Math.max(1, workers);
+            final double len = b - a;
+            final double chunkSize = len / chunks;
+
+            final int baseN = n / chunks;
+            final int remainder = n % chunks;
+
+            CompletionService<Double> cs = new ExecutorCompletionService<>(executor);
+
+            for (int i = 0; i < chunks; i++) {
+                final int chunkIndex = i;
+                final double startX = a + chunkIndex * chunkSize;
+                final double endX = (chunkIndex == chunks - 1) ? b : (startX + chunkSize);
+
+                final int chunkN = baseN + (chunkIndex < remainder ? 1 : 0);
+
+                cs.submit(() -> {
+                    double partial = integrator.integrate(startX, endX, chunkN, functionId, algoId);
+                    return partial;
+                });
+            }
+
+            double sum = 0;
+
+            for (int i = 0; i < chunks; i++) {
+                sum += cs.take().get();
+            }
+
+            job.setResult(sum);
             return job;
         });
     }
