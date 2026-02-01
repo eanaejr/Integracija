@@ -38,6 +38,7 @@ public class MainApp {
         JTextField txtB = new JTextField("1");
         JLabel lblN = new JLabel("n (subintervals):");
         JTextField txtN = new JTextField("1000000");
+        JCheckBox chkNative = new JCheckBox("Koristi JNI (ako je dostupno)");
         JButton btnStart = new JButton("Pokreni integraciju");
         JLabel lblStatus = new JLabel("Status: idle");
         JLabel lblResult = new JLabel("Rezultat: -");
@@ -52,6 +53,7 @@ public class MainApp {
         input.add(txtB);
         input.add(lblN);
         input.add(txtN);
+        input.add(chkNative);
         input.add(btnStart);
         input.add(lblStatus);
 
@@ -67,8 +69,9 @@ public class MainApp {
             int n = Integer.parseInt(txtN.getText());
             int functionId = cmbFunc.getSelectedIndex();
             int algoId = cmbAlgo.getSelectedIndex();
+            boolean preferNative = chkNative.isSelected();
 
-            Future<IntegrationJob> fut = service.submit(func, a, b, n, functionId, algoId);
+            Future<IntegrationJob> fut = service.submit(func, a, b, n, functionId, algoId, preferNative);
 
             Executors.newSingleThreadExecutor().submit(() -> {
                 try {

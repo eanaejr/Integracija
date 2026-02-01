@@ -19,7 +19,7 @@ public class IntegrationService {
     }
 
     
-    public Future<IntegrationJob> submit(String functionName, double a, double b, int n, int functionId, int algoId) {
+    public Future<IntegrationJob> submit(String functionName, double a, double b, int n, int functionId, int algoId, boolean preferNative) {
         final IntegrationJob job = new IntegrationJob(functionName, a, b, n);
         return executor.submit(() -> {
 
@@ -41,7 +41,7 @@ public class IntegrationService {
                 final int chunkN = baseN + (chunkIndex < remainder ? 1 : 0);
 
                 cs.submit(() -> {
-                    double partial = integrator.integrate(startX, endX, chunkN, functionId, algoId);
+                    double partial = integrator.integrate(startX, endX, chunkN, functionId, algoId, preferNative);
                     return partial;
                 });
             }

@@ -2,25 +2,41 @@ package com.example.integration;
 
 public class JniIntegrator {
 
-    private boolean nativeAvailable = false;
+    private static final boolean LIB_LOADED;
 
     static {
+        boolean loaded = false;
         try {
             System.loadLibrary("integrator");
-        } catch (UnsatisfiedLinkError e) {
+            loaded = true;
         }
+        catch (UnsatisfiedLinkError ignored) {//ako nema native koda koristi javu
+        }
+        LIB_LOADED = loaded;
     }
+
+    private final boolean nativeAvailable;
 
     public JniIntegrator() {
-        try {
-            nativeAvailable = false;
-        } catch (Throwable t) {
-            nativeAvailable = false;
-        }
+        this.nativeAvailable = LIB_LOADED;
     }
 
-    public native double integrateNative(double a, double b, int n, int method);
+    public native double integrateNative(double a, double b, int n, int functionId, int algoId);
 
+    public boolean isNativeAvailable() {
+        return nativeAvailable;
+    }
+
+    public double integrate(double a, double b, int n, int functionId, int algoId, boolean preferNative) {
+        if (preferNative && nativeAvailable) {
+            try {
+                return integrateNative(a, b, n, functionId, algoId);
+            }
+            catch (UnsatisfiedLinkError ignored) {//ako native kod ne radi nastavi dalje na javu}
+            }
+        }
+        return integrateJava(a, b, n, functionId, algoId);
+    }
     private static double f(double x, int functionId) {
         return switch (functionId) {
             case 0 -> Math.sin(x);
@@ -47,23 +63,12 @@ public class JniIntegrator {
             return (h / 3.0) * sum;
         }
 
-        //integracije pomocu trapezne formule
+        // integriranje pomocu trapezne formule
         final double h = (b - a) / n;
         double sum = 0.5 * (f(a, functionId) + f(b, functionId));
         for (int i = 1; i < n; i++) {
             sum += f(a + i * h, functionId);
         }
         return sum * h;
-    }
-
-    public double integrate(double a, double b, int n, int functionId, int algoId) {
-        if (nativeAvailable) {
-            try {
-                return integrateNative(a, b, n, algoId);
-            } catch (UnsatisfiedLinkError e) {
-                // padamo na Java fallback
-            }
-        }
-        return integrateJava(a, b, n, functionId, algoId);
     }
 }
