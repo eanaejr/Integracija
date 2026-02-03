@@ -4,7 +4,12 @@ import com.example.integration.model.IntegrationJob;
 import com.example.integration.repo.IntegrationRepository;
 
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.*;
+import java.util.stream.Collectors;
 
+//koristi zaseban chunkExecutor kako bi izbjegli deadlock prilikom submitanja podzadataka
+//poziva repo.save(job) nakon što izračun završi (da bi job.getId() bio popunjen)
 
 public class IntegrationService {
 
@@ -18,7 +23,7 @@ public class IntegrationService {
         this.integrator = new JniIntegrator();
     }
 
-    
+
     public Future<IntegrationJob> submit(String functionName, double a, double b, int n, int functionId, int algoId, boolean preferNative) {
         final IntegrationJob job = new IntegrationJob(functionName, a, b, n);
         return executor.submit(() -> {
@@ -31,7 +36,11 @@ public class IntegrationService {
             final int baseN = n / chunks;
             final int remainder = n % chunks;
 
-            CompletionService<Double> cs = new ExecutorCompletionService<>(executor);
+            // Koristimo zaseban executor za chunkove kako bi izbjegli deadlock
+            ExecutorService chunkExecutor = Executors.newFixedThreadPool(chunks);
+            CompletionService<Double> cs = new ExecutorCompletionService<>(chunkExecutor);
+
+            final AtomicInteger submitted = new AtomicInteger(0);
 
             for (int i = 0; i < chunks; i++) {
                 final int chunkIndex = i;
@@ -44,17 +53,43 @@ public class IntegrationService {
                     double partial = integrator.integrate(startX, endX, chunkN, functionId, algoId, preferNative);
                     return partial;
                 });
+                submitted.incrementAndGet();
             }
 
             double sum = 0;
 
-            for (int i = 0; i < chunks; i++) {
-                sum += cs.take().get();
+            try {
+                for (int i = 0; i < submitted.get(); i++) {
+                    Future<Double> f = cs.take();
+                    sum += f.get();
+                }
+            } finally {
+                chunkExecutor.shutdown();
+                try {
+                    if (!chunkExecutor.awaitTermination(1, TimeUnit.MINUTES)) {
+                        chunkExecutor.shutdownNow();
+                    }
+                } catch (InterruptedException ie) {
+                    chunkExecutor.shutdownNow();
+                    Thread.currentThread().interrupt();
+                }
             }
 
+            // postavlja rezultat i sprema u bazu prije vraćanja
             job.setResult(sum);
-            return job;
+            IntegrationJob saved = repo.save(job);
+            return saved;
         });
+    }
+
+    //Dohvati zandjih n rezultata
+    public List<IntegrationJob> getLastJobs(int n) {
+        List<IntegrationJob> all = repo.listAll();
+        if (all == null || all.isEmpty()) return Collections.emptyList();
+        return all.stream()
+                .sorted(Comparator.comparing(IntegrationJob::getCreatedAt, Comparator.nullsLast(Comparator.reverseOrder())))
+                .limit(n)
+                .collect(Collectors.toList());
     }
 
     public void shutdown() {
