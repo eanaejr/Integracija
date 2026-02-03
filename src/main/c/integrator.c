@@ -1,5 +1,6 @@
 #include <jni.h>
 #include <math.h>
+#include <stdio.h>
 
 static double f(double x, int functionId) {
     switch (functionId) {
@@ -45,6 +46,12 @@ static double integrate_simpson(double a, double b, int n, int functionId) {
 JNIEXPORT jdouble JNICALL Java_com_example_integration_JniIntegrator_integrateNative
   (JNIEnv *env, jobject obj, jdouble a, jdouble b, jint n, jint functionId, jint algoId)
 {
+
+    /* test koji provjerava radi li JNI
+    printf("JNI CALLED\n");
+    fflush(stdout);
+    */
+
     (void)env; (void)obj;
 
     const double A = (double)a;
@@ -58,3 +65,4 @@ JNIEXPORT jdouble JNICALL Java_com_example_integration_JniIntegrator_integrateNa
     }
     return (jdouble)integrate_trapezoid(A, B, N, FID);
 }
+
