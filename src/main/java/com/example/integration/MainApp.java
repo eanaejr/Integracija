@@ -10,7 +10,6 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.border.TitledBorder;
 import java.awt.*;
 import java.awt.event.*;
-import java.text.NumberFormat;
 import java.util.concurrent.*;
 
 import java.util.regex.Matcher;
@@ -18,9 +17,6 @@ import java.util.regex.Pattern;
 import net.objecthunter.exp4j.Expression;
 import net.objecthunter.exp4j.ExpressionBuilder;
 
-
-import net.objecthunter.exp4j.Expression;
-import net.objecthunter.exp4j.ExpressionBuilder;
 
 public class MainApp {
 
@@ -33,8 +29,8 @@ public class MainApp {
     private JRadioButton rbPredefined;
     private JRadioButton rbCustom;
     private JTextField txtExpression;
-    private JFormattedTextField txtA;
-    private JFormattedTextField txtB;
+    private JTextField txtA;
+    private JTextField txtB;
     private JSpinner spnN;
     private JComboBox<String> cmbAlgo;
     private JCheckBox chkNative;
@@ -217,8 +213,8 @@ public class MainApp {
         gc.gridx = 1;
         gc.gridy = row;
         gc.gridwidth = 1;
-        txtA = new JFormattedTextField(NumberFormat.getNumberInstance());
-        txtA.setValue(0.0);
+        txtA = new JTextField("0.0");
+        txtA.setToolTipText("Početak intervala (a)");
         params.add(txtA, gc);
 
         gc.gridx = 2;
@@ -230,8 +226,8 @@ public class MainApp {
         gc.gridx = 3;
         gc.gridy = row;
         gc.gridwidth = 1;
-        txtB = new JFormattedTextField(NumberFormat.getNumberInstance());
-        txtB.setValue(1.0);
+        txtB = new JTextField("1.0");
+        txtB.setToolTipText("Kraj intervala (b)");
         params.add(txtB, gc);
 
         row++;
@@ -301,8 +297,8 @@ public class MainApp {
             lblResult.setText(String.format("Rezultat: %.12f", res));
             lblStatus.setText("Status: odabrano iz povijesti");
 
-            txtA.setValue(a);
-            txtB.setValue(b);
+            txtA.setText(String.valueOf(a));
+            txtB.setText(String.valueOf(b));
 
             String fLower = funcText.toLowerCase();
             if (fLower.contains("sin")) {
@@ -475,19 +471,8 @@ public class MainApp {
         double a, b;
         int n;
         try {
-            Object va = txtA.getValue();
-            Object vb = txtB.getValue();
-            if (va instanceof Number) {
-                a = ((Number) va).doubleValue();
-            } else {
-                a = Double.parseDouble(txtA.getText().trim());
-            }
-
-            if (vb instanceof Number) {
-                b = ((Number) vb).doubleValue();
-            } else {
-                b = Double.parseDouble(txtB.getText().trim());
-            }
+            a = Double.parseDouble(txtA.getText().replace(",", ".")); // Osiguraj da prima i točku i zarez
+            b = Double.parseDouble(txtB.getText().replace(",", "."));
 
             Object vn = spnN.getValue();
             if (vn instanceof Number) {
@@ -499,14 +484,6 @@ public class MainApp {
             JOptionPane.showMessageDialog(frame, "Neispravan unos za a, b ili n.", "Greška", JOptionPane.ERROR_MESSAGE);
             return;
         }
-//        try {
-//            a = ((Number) ((JFormattedTextField) txtA).getValue()).doubleValue();
-//            b = ((Number) ((JFormattedTextField) txtB).getValue()).doubleValue();
-//            n = (Integer) spnN.getValue();
-//        } catch (Exception ex) {
-//            JOptionPane.showMessageDialog(frame, "Neispravan unos za a, b ili n.", "Greška", JOptionPane.ERROR_MESSAGE);
-//            return;
-//        }
         if (n <= 0) {
             JOptionPane.showMessageDialog(frame, "n mora biti veće od 0.", "Greška", JOptionPane.ERROR_MESSAGE);
             return;
