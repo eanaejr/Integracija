@@ -1,6 +1,7 @@
 package com.example.integration;
 
 import com.example.integration.model.IntegrationJob;
+import com.example.integration.model.IntegrationChunk;
 import com.example.integration.repo.IntegrationRepository;
 
 import java.util.concurrent.*;
@@ -69,7 +70,9 @@ public class IntegrationService {
                 job.setResult(result);
                 return repo.save(job);
             }
-
+            
+            repo.save(job); // spremi odmah da dobije ID, treba za IntegrationChunk.jobId
+            
             final int workers = ((ThreadPoolExecutor) executor).getCorePoolSize();
             final int chunks = Math.max(1, workers);
             final double len = b - a;
@@ -93,6 +96,7 @@ public class IntegrationService {
 
                 cs.submit(() -> {
                     double partial = integrator.integrate(startX, endX, chunkN, functionId, algoId, preferNative);
+                    repo.saveChunk(new IntegrationChunk(job.getId(), chunkIndex, startX, endX, chunkN, partial));
                     return partial;
                 });
                 submitted.incrementAndGet();
@@ -132,6 +136,10 @@ public class IntegrationService {
                 .sorted(Comparator.comparing(IntegrationJob::getCreatedAt, Comparator.nullsLast(Comparator.reverseOrder())))
                 .limit(n)
                 .collect(Collectors.toList());
+    }
+    
+    public List<IntegrationChunk> chunksForJob(long jobId) {
+        return repo.listChunksForJob(jobId);
     }
 
     public void shutdown() {

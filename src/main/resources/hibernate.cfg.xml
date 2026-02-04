@@ -22,6 +22,7 @@
         <property name="connection.autocommit">false</property>
 
         <mapping class="com.example.integration.model.IntegrationJob"/>
+        <mapping class="com.example.integration.model.IntegrationChunk"/>
 
     </session-factory>
 </hibernate-configuration>
