@@ -14,6 +14,11 @@ import java.util.function.DoubleUnaryOperator;
 
 public class FunctionPlotPanel extends JPanel {
 
+    private static final Color BG_COLOR = new Color(250, 251, 252);
+    private static final Color AXIS_COLOR = new Color(180, 180, 180);
+    private static final Color CURVE_COLOR = new Color(0, 122, 255);
+    private static final Color TEXT_COLOR = new Color(50, 50, 50);
+
     private DoubleUnaryOperator function;
     private double a, b;
     private int samples = 500;
@@ -35,6 +40,14 @@ public class FunctionPlotPanel extends JPanel {
         Graphics2D g2 = (Graphics2D) g;
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
                 RenderingHints.VALUE_ANTIALIAS_ON);
+
+        g2.setColor(BG_COLOR);
+        g2.fillRect(0, 0, getWidth(), getHeight());
+
+        g2.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        g2.setColor(TEXT_COLOR);
+
+
 
         int w = getWidth();
         int h = getHeight();
@@ -101,7 +114,8 @@ public class FunctionPlotPanel extends JPanel {
         int zeroY = (int) Math.round(h - margin - (0.0 - minY) * scaleY);  // y=0
 
         // --- osi ---
-        g2.setColor(Color.GRAY);
+        g2.setStroke(new BasicStroke(2f));
+        g2.setColor(AXIS_COLOR);
         g2.drawLine(margin, zeroY, w - margin, zeroY); // x-os (y=0)
         g2.drawLine(zeroX, margin, zeroX, h - margin); // y-os (x=0)
 
@@ -148,7 +162,12 @@ public class FunctionPlotPanel extends JPanel {
         g2.drawString(String.format("%.2f", b), bLabelX, bottomY);
 
         // --- sjenčanje: između funkcije i x-osi (y=0) ---
-        g2.setColor(new Color(100, 150, 255, 80));
+        GradientPaint gp = new GradientPaint(
+                0, zeroY, new Color(33, 150, 243, 120),
+                0, h - margin, new Color(33, 150, 243, 10)
+        );
+        g2.setPaint(gp);
+
         Polygon area = new Polygon();
 
         // start na x-osi u x=a
@@ -172,7 +191,8 @@ public class FunctionPlotPanel extends JPanel {
         g2.fill(area);
 
         // --- linija funkcije ---
-        g2.setColor(Color.BLUE);
+        g2.setColor(CURVE_COLOR);
+        g2.setStroke(new BasicStroke(2.5f));
 
         int prevX = 0, prevY = 0;
         boolean hasPrev = false;

@@ -23,6 +23,27 @@ public class MainApp {
 
     private FunctionPlotPanel plotPanel;
 
+    private void applyTheme() {
+        Font base = new Font("Segoe UI", Font.PLAIN, 13);
+
+        UIManager.put("Label.font", base);
+        UIManager.put("Button.font", base.deriveFont(Font.BOLD));
+        UIManager.put("TextField.font", base);
+        UIManager.put("ComboBox.font", base);
+        UIManager.put("Spinner.font", base);
+        UIManager.put("TitledBorder.font", base.deriveFont(Font.BOLD));
+
+        // boje
+        UIManager.put("Panel.background", new Color(245, 247, 250));
+        UIManager.put("Button.background", new Color(52, 120, 246));
+        UIManager.put("Button.foreground", Color.WHITE);
+        UIManager.put("Button.select", new Color(30, 90, 200));
+        UIManager.put("TextField.background", Color.WHITE);
+        UIManager.put("ComboBox.background", Color.WHITE);
+        UIManager.put("ProgressBar.foreground", new Color(52, 120, 246));
+    }
+
+
     private JFrame frame;
     private JComboBox<String> cmbFunc;
     private JRadioButton rbPredefined;
@@ -78,15 +99,7 @@ public class MainApp {
         } catch (Exception ignored) {
         }
 
-        Font base = UIManager.getFont("Label.font");
-        if (base != null) {
-            Font f = base.deriveFont(base.getStyle(), Math.max(12f, base.getSize() + 1f));
-            UIManager.put("Label.font", f);
-            UIManager.put("Button.font", f.deriveFont(Font.BOLD));
-            UIManager.put("ComboBox.font", f);
-            UIManager.put("TextField.font", f);
-        }
-
+        applyTheme();
         SwingUtilities.invokeLater(this::buildAndShow);
     }
 
@@ -99,7 +112,10 @@ public class MainApp {
         frame.setContentPane(root);
 
         JPanel params = new JPanel(new GridBagLayout());
-        params.setBorder(new TitledBorder("Parametri integracije"));
+        params.setBorder(BorderFactory.createCompoundBorder(
+                new TitledBorder("Parametri integracije"),
+                new EmptyBorder(10, 10, 10, 10)
+        ));
         GridBagConstraints gc = new GridBagConstraints();
         gc.insets = new Insets(6, 8, 6, 8);
         gc.anchor = GridBagConstraints.EAST;
@@ -240,9 +256,14 @@ public class MainApp {
         root.add(centerSplit, BorderLayout.CENTER);
 
         JPanel recentPanel = new JPanel(new BorderLayout(4, 4));
-        recentPanel.setBorder(new TitledBorder("Zadnjih 5 rezultata"));
+        recentPanel.setBorder(BorderFactory.createCompoundBorder(
+                new TitledBorder("Zadnjih 5 rezultata"),
+                new EmptyBorder(10, 10, 10, 10)
+        ));
         recentModel = new DefaultListModel<>();
         recentList = new JList<>(recentModel);
+
+
 
         recentList.addListSelectionListener(e -> {
             if (e.getValueIsAdjusting()) {
@@ -326,6 +347,9 @@ public class MainApp {
 
         recentList.setVisibleRowCount(5);
         recentList.setFixedCellWidth(260);
+        recentList.setSelectionBackground(new Color(52, 120, 246));
+        recentList.setSelectionForeground(Color.WHITE);
+
         recentPanel.add(new JScrollPane(recentList), BorderLayout.CENTER);
         root.add(recentPanel, BorderLayout.WEST);
 
@@ -334,10 +358,15 @@ public class MainApp {
         controls.setBorder(new EmptyBorder(4, 4, 4, 4));
 
         btnStart = new JButton("Pokreni");
+        btnStart.setFocusPainted(false);
+        btnStart.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
+        btnStart.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         btnStart.setAlignmentX(Component.CENTER_ALIGNMENT);
-        btnStart.setPreferredSize(new Dimension(120, 44));
+        btnStart.setFocusPainted(false);
+        btnStart.setFont(btnStart.getFont().deriveFont(Font.BOLD, 14f));
+        btnStart.setPreferredSize(new Dimension(140, 44));
         btnStart.setMaximumSize(new Dimension(140, 48));
-        btnStart.setMnemonic(KeyEvent.VK_P);
+        //btnStart.setMnemonic(KeyEvent.VK_P);
         btnStart.setToolTipText("Pokreni izračun (Alt+P)");
 
         controls.add(Box.createVerticalGlue());
@@ -348,7 +377,8 @@ public class MainApp {
         root.add(controls, BorderLayout.EAST);
 
         JPanel status = new JPanel(new GridBagLayout());
-        status.setBorder(new EmptyBorder(6, 6, 6, 6));
+        status.setBackground(new Color(240, 242, 245));
+        status.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, new Color(200,200,200)));
         GridBagConstraints sc = new GridBagConstraints();
         sc.insets = new Insets(4, 6, 4, 6);
         sc.fill = GridBagConstraints.HORIZONTAL;
