@@ -89,6 +89,29 @@ public class MainApp {
         }
     }
 
+    //provjerava je li funkcija definirana u tockama intervala (1000 tocaka u ovom slucaju)
+    private boolean isFunctionDefinedOnInterval(String expr, double a, double b) {
+        try {
+            Expression e = new ExpressionBuilder(expr)
+                    .variable("x")
+                    .build();
+
+            int samples = 1000;   // može 500, 1000, 2000...
+            for (int i = 0; i <= samples; i++) {
+                double x = a + i * (b - a) / samples;
+                double val = e.setVariable("x", x).evaluate();
+
+                if (Double.isNaN(val) || Double.isInfinite(val)) {
+                    return false;
+                }
+            }
+            return true;
+        } catch (Exception ex) {
+            return false;
+        }
+    }
+
+
     private boolean isProblematicPoint(Expression e, double x) {
         try {
             double val = e.setVariable("x", x).evaluate();
@@ -513,6 +536,15 @@ public class MainApp {
             }
 
             int algoId = cmbAlgo.getSelectedIndex();
+
+            //Ako funkcija nije definirana u tocki intervala javlja se greska
+            if (!isFunctionDefinedOnInterval(expr, a, b)) {
+                JOptionPane.showMessageDialog(frame,
+                        "Funkcija nije definirana u cijelom intervalu.",
+                        "Greška", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
 
             setUiBusy(true);
             

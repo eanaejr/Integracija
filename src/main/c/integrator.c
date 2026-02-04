@@ -47,10 +47,10 @@ JNIEXPORT jdouble JNICALL Java_com_example_integration_JniIntegrator_integrateNa
   (JNIEnv *env, jobject obj, jdouble a, jdouble b, jint n, jint functionId, jint algoId)
 {
 
-    /* test koji provjerava radi li JNI
-    printf("JNI CALLED\n");
-    fflush(stdout);
-    */
+    //test koji provjerava radi li JNI
+    /*printf("JNI CALLED\n");
+    fflush(stdout);*/
+
 
     (void)env; (void)obj;
 
