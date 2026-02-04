@@ -28,7 +28,9 @@ public class FunctionPlotPanel extends JPanel {
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
-        if (function == null) return;
+        if (function == null) {
+            return;
+        }
 
         Graphics2D g2 = (Graphics2D) g;
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
@@ -79,8 +81,14 @@ public class FunctionPlotPanel extends JPanel {
         maxY = Math.max(maxY, 0.0);
 
         // sigurnost protiv 0 širine
-        if (minX == maxX) { minX -= 1; maxX += 1; }
-        if (minY == maxY) { minY -= 1; maxY += 1; }
+        if (minX == maxX) {
+            minX -= 1;
+            maxX += 1;
+        }
+        if (minY == maxY) {
+            minY -= 1;
+            maxY += 1;
+        }
 
         // --- skaliranje ---
         double scaleX = (w - 2.0 * margin) / (maxX - minX);
@@ -89,7 +97,6 @@ public class FunctionPlotPanel extends JPanel {
         // funkcije mapiranja (bez lambdi)
         // px = margin + (x - minX) * scaleX
         // py = h - margin - (y - minY) * scaleY
-
         int zeroX = (int) Math.round(margin + (0.0 - minX) * scaleX);      // x=0
         int zeroY = (int) Math.round(h - margin - (0.0 - minY) * scaleY);  // y=0
 
@@ -98,16 +105,47 @@ public class FunctionPlotPanel extends JPanel {
         g2.drawLine(margin, zeroY, w - margin, zeroY); // x-os (y=0)
         g2.drawLine(zeroX, margin, zeroX, h - margin); // y-os (x=0)
 
-        // 0 na sjecištu
         g2.setColor(Color.BLACK);
-        g2.drawString("0", zeroX - 6, zeroY + 15);
+
+        // NE crtaj posebnu 0 samo ako je 0 TOČNO a ili b (uz toleranciju)
+        double eps = 1e-9;
+
+        boolean zeroIsEndpoint = (Math.abs(a) < eps) || (Math.abs(b) < eps);
+
+        // Crtaj "0" ako NIJE endpoint (znači: unutar intervala ili izvan intervala)
+        if (!zeroIsEndpoint) {
+            int zx = zeroX;
+            int zy = zeroY;
+
+            // pomak ako je preblizu rubovima
+            if (zx < margin + 12) {
+                zx = margin + 12;
+            }
+            if (zy > h - margin - 8) {
+                zy = h - margin - 8;
+            }
+
+            g2.drawString("0", zx - 6, zy + 15);
+        }
 
         // oznake a i b (dolje)
         int bottomY = h - margin + 15;
         int aPx = (int) Math.round(margin + (a - minX) * scaleX);
         int bPx = (int) Math.round(margin + (b - minX) * scaleX);
-        g2.drawString(String.format("%.2f", a), aPx - 10, bottomY);
-        g2.drawString(String.format("%.2f", b), bPx - 10, bottomY);
+
+        // ako je a vrlo blizu osi y (zeroX), pomakni tekst malo da se ne poklopi s "0"
+        int aLabelX = aPx - 10;
+        if (Math.abs(aPx - zeroX) < 20) {
+            aLabelX += 18;
+        }
+
+        int bLabelX = bPx - 10;
+        if (Math.abs(bPx - zeroX) < 20) {
+            bLabelX += 18;
+        }
+
+        g2.drawString(String.format("%.2f", a), aLabelX, bottomY);
+        g2.drawString(String.format("%.2f", b), bLabelX, bottomY);
 
         // --- sjenčanje: između funkcije i x-osi (y=0) ---
         g2.setColor(new Color(100, 150, 255, 80));
@@ -119,7 +157,9 @@ public class FunctionPlotPanel extends JPanel {
         // točke krivulje
         for (int i = 0; i < samples; i++) {
             double y = ys[i];
-            if (!Double.isFinite(y)) continue;
+            if (!Double.isFinite(y)) {
+                continue;
+            }
 
             int px = (int) Math.round(margin + (xs[i] - minX) * scaleX);
             int py = (int) Math.round(h - margin - (y - minY) * scaleY);
