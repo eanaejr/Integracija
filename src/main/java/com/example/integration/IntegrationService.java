@@ -21,11 +21,8 @@ public class IntegrationService {
     private final JniIntegrator integrator;
 
     public IntegrationService(int threads) {
-        this(threads, new IntegrationRepository());
-    }
-    public IntegrationService(int threads, IntegrationRepository repo) {
         this.executor = Executors.newFixedThreadPool(threads);
-        this.repo = repo;
+        this.repo = new IntegrationRepository();
         this.integrator = new JniIntegrator();
     }
 
@@ -73,9 +70,9 @@ public class IntegrationService {
                 job.setResult(result);
                 return repo.save(job);
             }
-            
+
             repo.save(job); // spremi odmah da dobije ID, treba za IntegrationChunk.jobId
-            
+
             final int workers = ((ThreadPoolExecutor) executor).getCorePoolSize();
             final int chunks = Math.max(1, workers);
             final double len = b - a;
@@ -141,10 +138,9 @@ public class IntegrationService {
                 .collect(Collectors.toList());
     }
 
-//    Nigdi se ne koristi
-//    public List<IntegrationChunk> chunksForJob(long jobId) {
-//        return repo.listChunksForJob(jobId);
-//    }
+    public List<IntegrationChunk> chunksForJob(long jobId) {
+        return repo.listChunksForJob(jobId);
+    }
 
     public void shutdown() {
         executor.shutdown();

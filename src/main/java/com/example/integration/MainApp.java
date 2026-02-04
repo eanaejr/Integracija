@@ -21,7 +21,7 @@ import net.objecthunter.exp4j.ExpressionBuilder;
 public class MainApp {
 
     private final IntegrationService service;
-    
+
     private FunctionPlotPanel plotPanel;
 
     private JFrame frame;
@@ -43,70 +43,14 @@ public class MainApp {
     private DefaultListModel<String> recentModel;
     private JList<String> recentList;
 
-    //TODO provjeri jos
-    private boolean validateExpressionSyntax(String expr, double a, double b) {
+    //provjerava je li dobra sintaksa izraza
+    private boolean validateExpressionSyntax(String expr) {
         try {
-            Expression e = new ExpressionBuilder(expr)
+            new ExpressionBuilder(expr)
                     .variable("x")
                     .build();
-
-            double min = Math.min(a, b);
-            double max = Math.max(a, b);
-            double range = Math.max(max - min, 1e-6);
-            double mid = (min + max) / 2.0;
-            double eps = Math.max(range * 1e-8, 1e-8);
-
-            double[] basePoints = new double[]{
-                    min,
-                    max,
-                    mid,
-                    min + range * 0.25,
-                    min + range * 0.75
-            };
-
-            for (double x : basePoints) {
-                if (x < min - 1e-12 || x > max + 1e-12) continue;
-
-                if (isProblematicPoint(e, x)) {
-                    boolean ok = false;
-                    double[] deltas = new double[]{eps, -eps, 2 * eps, -2 * eps, range * 1e-3};
-                    for (double d : deltas) {
-                        double xp = x + d;
-                        if (xp < min || xp > max) continue;
-                        if (!isProblematicPoint(e, xp)) {
-                            ok = true;
-                            break;
-                        }
-                    }
-                    if (!ok) {
-                        return false;
-                    }
-                }
-            }
             return true;
-        } catch (IllegalArgumentException | ArithmeticException ex) {
-            return false;
-        }
-    }
-
-    //provjerava je li funkcija definirana u tockama intervala (1000 tocaka u ovom slucaju)
-    private boolean isFunctionDefinedOnInterval(String expr, double a, double b) {
-        try {
-            Expression e = new ExpressionBuilder(expr)
-                    .variable("x")
-                    .build();
-
-            int samples = 1000;   // može 500, 1000, 2000...
-            for (int i = 0; i <= samples; i++) {
-                double x = a + i * (b - a) / samples;
-                double val = e.setVariable("x", x).evaluate();
-
-                if (Double.isNaN(val) || Double.isInfinite(val)) {
-                    return false;
-                }
-            }
-            return true;
-        } catch (Exception ex) {
+        } catch (Exception e) {
             return false;
         }
     }
@@ -176,7 +120,17 @@ public class MainApp {
         gc.gridy = row;
         gc.weightx = 1.0;
         gc.gridwidth = 2;
-        cmbFunc = new JComboBox<>(new String[]{"sin(x)", "cos(x)", "x^2"});
+        cmbFunc = new JComboBox<>(new String[]{
+                "sin(x)",    // 0
+                "cos(x)",    // 1
+                "x^2",       // 2
+                "tan(x)",    // 3
+                "exp(x)",    // 4
+                "sqrt(x)",   // 5
+                "1/x",       // 6
+                "log(x)",    // 7  -> prirodni log (ln)
+                "log10(x)"   // 8  -> dekadski
+        });
         cmbFunc.setToolTipText("Odaberite predefiniranu funkciju");
         params.add(cmbFunc, gc);
 
@@ -278,21 +232,21 @@ public class MainApp {
         //Maknut JNI checkbox
         //chkNative = new JCheckBox("Koristi JNI (ako je dostupno)");
         //params.add(chkNative, gc);
-        
+
         plotPanel = new FunctionPlotPanel();
         plotPanel.setPreferredSize(new Dimension(420, 320));
         plotPanel.setBorder(new TitledBorder("Graf funkcije i integral"));
-        
+
         JSplitPane centerSplit = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, params, plotPanel);
         centerSplit.setResizeWeight(0.60); // lijevo parametri, desno graf
-        
+
         root.add(centerSplit, BorderLayout.CENTER);
 
         JPanel recentPanel = new JPanel(new BorderLayout(4, 4));
         recentPanel.setBorder(new TitledBorder("Zadnjih 5 rezultata"));
         recentModel = new DefaultListModel<>();
         recentList = new JList<>(recentModel);
-        
+
         recentList.addListSelectionListener(e -> {
             if (e.getValueIsAdjusting()) {
                 return;
@@ -348,7 +302,7 @@ public class MainApp {
         });
 
 
-        
+
         recentList.setVisibleRowCount(5);
         recentList.setFixedCellWidth(260);
         recentPanel.add(new JScrollPane(recentList), BorderLayout.CENTER);
@@ -419,17 +373,32 @@ public class MainApp {
         loadRecentResults();
         frame.setVisible(true);
     }
-    
+
     private DoubleUnaryOperator resolveFunction(int functionId) {
         return switch (functionId) {
             case 0 ->
-                Math::sin;
+                    Math::sin;
             case 1 ->
-                Math::cos;
+                    Math::cos;
             default ->
-                (x) -> x * x;
+                    (x) -> x * x;
         };
     }
+
+    //provjerava je li funkcija definirana u tockama intervala (1000 tocaka u ovom slucaju)
+    private boolean isFunctionDefinedOnInterval(DoubleUnaryOperator fn, double a, double b) {
+        int samples = 1000;
+        for (int i = 0; i <= samples; i++) {
+            double x = a + i * (b - a) / samples;
+            double val = fn.applyAsDouble(x);
+
+            if (Double.isNaN(val) || Double.isInfinite(val)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
 
 
     private void loadRecentResults() {
@@ -527,7 +496,7 @@ public class MainApp {
                 return;
             }
 
-            boolean ok = validateExpressionSyntax(expr, a, b);
+            boolean ok = validateExpressionSyntax(expr);
             if (!ok) {
                 JOptionPane.showMessageDialog(frame,
                         "Izraz nije valjan.",
@@ -537,22 +506,26 @@ public class MainApp {
 
             int algoId = cmbAlgo.getSelectedIndex();
 
+
+            //pretvaranje expr u doubleUnaryOperator
+            Expression e = new ExpressionBuilder(expr)
+                    .variable("x")
+                    .build();
+
+            DoubleUnaryOperator fn = (x) -> {
+                e.setVariable("x", x);
+                return e.evaluate();
+            };
+
             //Ako funkcija nije definirana u tocki intervala javlja se greska
-            if (!isFunctionDefinedOnInterval(expr, a, b)) {
+            if (!isFunctionDefinedOnInterval(fn, a, b)) {
                 JOptionPane.showMessageDialog(frame,
                         "Funkcija nije definirana u cijelom intervalu.",
                         "Greška", JOptionPane.ERROR_MESSAGE);
                 return;
             }
 
-
             setUiBusy(true);
-            
-            Expression e = new ExpressionBuilder(expr).variable("x").build();
-            DoubleUnaryOperator fn = (x) -> {
-                e.setVariable("x", x);
-                return e.evaluate();
-            };
             plotPanel.setFunction(fn, a, b);
 
             Future<IntegrationJob> fut = service.submit(
@@ -594,11 +567,20 @@ public class MainApp {
         }
 
 
-
         int functionId = cmbFunc.getSelectedIndex();
         int algoId = cmbAlgo.getSelectedIndex();
-        
-        plotPanel.setFunction(resolveFunction(functionId), a, b);
+
+        DoubleUnaryOperator fn = resolveFunction(functionId);
+
+        //Ako funkcija nije definirana na intervalu ispisuje se greska
+        if (!isFunctionDefinedOnInterval(fn, a, b)) {
+            JOptionPane.showMessageDialog(frame,
+                    "Funkcija nije definirana u cijelom intervalu.",
+                    "Greška", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        plotPanel.setFunction(fn, a, b);
 
         setUiBusy(true);
         lblStatus.setText("Status: računam...");
@@ -636,7 +618,7 @@ public class MainApp {
         };
         worker.execute();
     }
-    
+
     private boolean uiBusy = false;
 
     private void setUiBusy(boolean busy) {
