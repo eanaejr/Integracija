@@ -432,27 +432,64 @@ public class MainApp {
 
         if (rbCustom.isSelected()) {
             String expr = txtExpression.getText().trim();
+
             if (expr.isEmpty() || expr.equals(exprPlaceholder)) {
-                JOptionPane.showMessageDialog(frame, "Unesite izraz za funkciju ili odaberite predefiniranu.", "Info", JOptionPane.INFORMATION_MESSAGE);
-                return;
-            }
-            // 1. brza UI sintaksa i evaluacijska provjera
-            boolean ok = validateExpressionSyntax(expr, a, b);
-            if (!ok) {
                 JOptionPane.showMessageDialog(frame,
-                        "Izraz nije valjan (sintaksa ili evaluacija unutar intervala). Provjerite izraz i pokušajte ponovno.",
+                        "Unesite izraz za funkciju.",
                         "Greška", JOptionPane.ERROR_MESSAGE);
-                lblStatus.setText("Status: neispravan izraz");
                 return;
             }
 
-            // 2. izraz je valjan na UI razini — obavijesti korisnika da backend još nije povezan
-            lblStatus.setText("Status: izraz valjan (backend nije implementiran)");
-            JOptionPane.showMessageDialog(frame,
-                    "Izraz izgleda ispravno, ali backend za evaluaciju custom izraza još nije implementiran.\n",
-                    "Info", JOptionPane.INFORMATION_MESSAGE);
+            boolean ok = validateExpressionSyntax(expr, a, b);
+            if (!ok) {
+                JOptionPane.showMessageDialog(frame,
+                        "Izraz nije valjan.",
+                        "Greška", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            int algoId = cmbAlgo.getSelectedIndex();
+
+            setUiBusy(true);
+
+            Future<IntegrationJob> fut = service.submit(
+                    expr,          // functionName
+                    a,
+                    b,
+                    n,
+                    -1,            // functionId (nije bitan)
+                    algoId,
+                    false,         // nema JNI za custom
+                    expr           // customExpr
+            );
+
+            SwingWorker<IntegrationJob, Void> worker = new SwingWorker<>() {
+                @Override
+                protected IntegrationJob doInBackground() throws Exception {
+                    return fut.get();
+                }
+
+                @Override
+                protected void done() {
+                    try {
+                        IntegrationJob job = get();
+                        lblResult.setText(String.format("Rezultat: %.12f", job.getResult()));
+                        lblStatus.setText("Status: gotov");
+                        recentModel.add(0, formatJob(job));
+                        while (recentModel.size() > 5)
+                            recentModel.remove(recentModel.size() - 1);
+                    } catch (Exception e) {
+                        lblStatus.setText("Status: greška");
+                    } finally {
+                        setUiBusy(false);
+                    }
+                }
+            };
+            worker.execute();
             return;
         }
+
+
 
         int functionId = cmbFunc.getSelectedIndex();
         int algoId = cmbAlgo.getSelectedIndex();
@@ -460,7 +497,7 @@ public class MainApp {
 
         setUiBusy(true);
 
-        Future<IntegrationJob> fut = service.submit(cmbFunc.getSelectedItem().toString(), a, b, n, functionId, algoId, preferNative);
+        Future<IntegrationJob> fut = service.submit(cmbFunc.getSelectedItem().toString(), a, b, n, functionId, algoId, preferNative,null);
 
         SwingWorker<IntegrationJob, Void> worker = new SwingWorker<>() {
             @Override

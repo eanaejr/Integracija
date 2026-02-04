@@ -7,6 +7,8 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.*;
 import java.util.stream.Collectors;
+import net.objecthunter.exp4j.Expression;
+import net.objecthunter.exp4j.ExpressionBuilder;
 
 //koristi zaseban chunkExecutor kako bi izbjegli deadlock prilikom submitanja podzadataka
 //poziva repo.save(job) nakon što izračun završi (da bi job.getId() bio popunjen)
@@ -23,10 +25,50 @@ public class IntegrationService {
         this.integrator = new JniIntegrator();
     }
 
+    private double integrateCustom(double a, double b, int n, String expr, int algoId) {
+        if (n <= 0) return 0.0;
 
-    public Future<IntegrationJob> submit(String functionName, double a, double b, int n, int functionId, int algoId, boolean preferNative) {
+        Expression e = new ExpressionBuilder(expr)
+                .variable("x")
+                .build();
+
+        if (algoId == 1) { // Simpson
+            if (n % 2 != 0) n++;
+            double h = (b - a) / n;
+            double sum = eval(e, a) + eval(e, b);
+
+            for (int i = 1; i < n; i += 2)
+                sum += 4 * eval(e, a + i * h);
+
+            for (int i = 2; i < n; i += 2)
+                sum += 2 * eval(e, a + i * h);
+
+            return (h / 3.0) * sum;
+        }
+
+        // Trapez
+        double h = (b - a) / n;
+        double sum = 0.5 * (eval(e, a) + eval(e, b));
+        for (int i = 1; i < n; i++)
+            sum += eval(e, a + i * h);
+
+        return sum * h;
+    }
+
+    private double eval(Expression e, double x) {
+        return e.setVariable("x", x).evaluate();
+    }
+
+
+    public Future<IntegrationJob> submit(String functionName, double a, double b, int n, int functionId, int algoId, boolean preferNative, String customExpr) {
         final IntegrationJob job = new IntegrationJob(functionName, a, b, n);
         return executor.submit(() -> {
+
+            if (customExpr != null) {
+                double result = integrateCustom(a, b, n, customExpr, algoId);
+                job.setResult(result);
+                return repo.save(job);
+            }
 
             final int workers = ((ThreadPoolExecutor) executor).getCorePoolSize();
             final int chunks = Math.max(1, workers);
