@@ -17,7 +17,6 @@ import java.util.regex.Pattern;
 import net.objecthunter.exp4j.Expression;
 import net.objecthunter.exp4j.ExpressionBuilder;
 
-
 public class MainApp {
 
     private final IntegrationService service;
@@ -54,7 +53,6 @@ public class MainApp {
             return false;
         }
     }
-
 
     private boolean isProblematicPoint(Expression e, double x) {
         try {
@@ -121,15 +119,15 @@ public class MainApp {
         gc.weightx = 1.0;
         gc.gridwidth = 2;
         cmbFunc = new JComboBox<>(new String[]{
-                "sin(x)",    // 0
-                "cos(x)",    // 1
-                "x^2",       // 2
-                "tan(x)",    // 3
-                "exp(x)",    // 4
-                "sqrt(x)",   // 5
-                "1/x",       // 6
-                "log(x)",    // 7  -> prirodni log (ln)
-                "log10(x)"   // 8  -> dekadski
+            "sin(x)", // 0
+            "cos(x)", // 1
+            "x^2", // 2
+            "tan(x)", // 3
+            "exp(x)", // 4
+            "sqrt(x)", // 5
+            "1/x", // 6
+            "log(x)", // 7  -> prirodni log (ln)
+            "log10(x)" // 8  -> dekadski
         });
         cmbFunc.setToolTipText("Odaberite predefiniranu funkciju");
         params.add(cmbFunc, gc);
@@ -232,7 +230,6 @@ public class MainApp {
         //Maknut JNI checkbox
         //chkNative = new JCheckBox("Koristi JNI (ako je dostupno)");
         //params.add(chkNative, gc);
-
         plotPanel = new FunctionPlotPanel();
         plotPanel.setPreferredSize(new Dimension(420, 320));
         plotPanel.setBorder(new TitledBorder("Graf funkcije i integral"));
@@ -278,14 +275,39 @@ public class MainApp {
             txtA.setText(String.valueOf(a));
             txtB.setText(String.valueOf(b));
 
-            String fLower = funcText.toLowerCase();
-            if (fLower.contains("sin")) {
+            String fLower = funcText.toLowerCase().replace(" ", "");
+
+            // Predefined (crtamo direktno bez exp4j)
+            if (fLower.equals("sin(x)") || fLower.contains("sin(")) {
                 plotPanel.setFunction(Math::sin, a, b);
-            } else if (fLower.contains("cos")) {
+
+            } else if (fLower.equals("cos(x)") || fLower.contains("cos(")) {
                 plotPanel.setFunction(Math::cos, a, b);
-            } else if (fLower.contains("x^2") || fLower.contains("x*x")) {
+
+            } else if (fLower.equals("x^2") || fLower.contains("x^2") || fLower.contains("x*x")) {
                 plotPanel.setFunction(x -> x * x, a, b);
+
+            } else if (fLower.equals("tan(x)") || fLower.contains("tan(")) {
+                plotPanel.setFunction(Math::tan, a, b);
+
+            } else if (fLower.equals("exp(x)") || fLower.contains("exp(")) {
+                plotPanel.setFunction(Math::exp, a, b);
+
+            } else if (fLower.equals("sqrt(x)") || fLower.contains("sqrt(")) {
+                plotPanel.setFunction(Math::sqrt, a, b);
+
+            } else if (fLower.equals("1/x") || fLower.contains("1/x")) {
+                plotPanel.setFunction(x -> 1.0 / x, a, b);
+
+            } else if (fLower.equals("log10(x)") || fLower.contains("log10(")) {
+                plotPanel.setFunction(Math::log10, a, b);
+
+            } else if (fLower.equals("log(x)") || (fLower.contains("log(") && !fLower.contains("log10("))) {
+                // log(x) tretiramo kao prirodni log
+                plotPanel.setFunction(Math::log, a, b);
+
             } else {
+                // Custom expression (exp4j)
                 try {
                     Expression ex = new ExpressionBuilder(funcText).variable("x").build();
                     DoubleUnaryOperator fn = (x) -> {
@@ -299,9 +321,8 @@ public class MainApp {
                             "Greška", JOptionPane.ERROR_MESSAGE);
                 }
             }
+
         });
-
-
 
         recentList.setVisibleRowCount(5);
         recentList.setFixedCellWidth(260);
@@ -377,11 +398,25 @@ public class MainApp {
     private DoubleUnaryOperator resolveFunction(int functionId) {
         return switch (functionId) {
             case 0 ->
-                    Math::sin;
+                Math::sin;
             case 1 ->
-                    Math::cos;
+                Math::cos;
+            case 2 ->
+                (x) -> x * x;
+            case 3 ->
+                Math::tan;
+            case 4 ->
+                Math::exp;
+            case 5 ->
+                Math::sqrt;
+            case 6 ->
+                (x) -> 1.0 / x;
+            case 7 ->
+                Math::log;
+            case 8 ->
+                Math::log10;
             default ->
-                    (x) -> x * x;
+                (x) -> Double.NaN;
         };
     }
 
@@ -398,8 +433,6 @@ public class MainApp {
         }
         return true;
     }
-
-
 
     private void loadRecentResults() {
         SwingWorker<List<IntegrationJob>, IntegrationJob> loader = new SwingWorker<>() {
@@ -506,7 +539,6 @@ public class MainApp {
 
             int algoId = cmbAlgo.getSelectedIndex();
 
-
             //pretvaranje expr u doubleUnaryOperator
             Expression e = new ExpressionBuilder(expr)
                     .variable("x")
@@ -529,14 +561,14 @@ public class MainApp {
             plotPanel.setFunction(fn, a, b);
 
             Future<IntegrationJob> fut = service.submit(
-                    expr,          // functionName
+                    expr, // functionName
                     a,
                     b,
                     n,
-                    -1,            // functionId (nije bitan)
+                    -1, // functionId (nije bitan)
                     algoId,
-                    false,         // nema JNI za custom
-                    expr           // customExpr
+                    false, // nema JNI za custom
+                    expr // customExpr
             );
 
             SwingWorker<IntegrationJob, Void> worker = new SwingWorker<>() {
@@ -552,20 +584,24 @@ public class MainApp {
                         lblResult.setText(String.format("Rezultat: %.12f", job.getResult()));
                         lblStatus.setText("Status: gotov");
                         recentModel.add(0, formatJob(job));
-                        while (recentModel.size() > 5)
+                        while (recentModel.size() > 5) {
                             recentModel.remove(recentModel.size() - 1);
+                        }
+                    } catch (ExecutionException ee) {
+                        lblStatus.setText("Status: greška - " + ee.getCause().getMessage());
+                        JOptionPane.showMessageDialog(frame,
+                                "Došlo je do greške: " + ee.getCause().getMessage(),
+                                "Greška", JOptionPane.ERROR_MESSAGE);
                     } catch (Exception e) {
                         lblStatus.setText("Status: greška");
                     } finally {
                         setUiBusy(false);
                     }
-                    lblStatus.setText("Status: gotov");
                 }
             };
             worker.execute();
             return;
         }
-
 
         int functionId = cmbFunc.getSelectedIndex();
         int algoId = cmbAlgo.getSelectedIndex();
@@ -588,7 +624,7 @@ public class MainApp {
         //preferNative uvijek true ali necemo sve mijenjati negosamo staviti true umjesto svakog preferNative
         //to radimo jer smo maknuli JNI checkbox iz UI-a
         //JNI je interna optimizacija a ne UI opcija
-        Future<IntegrationJob> fut = service.submit(cmbFunc.getSelectedItem().toString(), a, b, n, functionId, algoId, true,null);
+        Future<IntegrationJob> fut = service.submit(cmbFunc.getSelectedItem().toString(), a, b, n, functionId, algoId, true, null);
 
         SwingWorker<IntegrationJob, Void> worker = new SwingWorker<>() {
             @Override
@@ -603,7 +639,9 @@ public class MainApp {
                     lblResult.setText(String.format("Rezultat: %.12f", job.getResult()));
                     lblStatus.setText("Status: gotov");
                     recentModel.add(0, formatJob(job));
-                    while (recentModel.size() > 5) recentModel.remove(recentModel.size() - 1);
+                    while (recentModel.size() > 5) {
+                        recentModel.remove(recentModel.size() - 1);
+                    }
                 } catch (InterruptedException ie) {
                     lblStatus.setText("Status: prekinuto");
                 } catch (ExecutionException ee) {
