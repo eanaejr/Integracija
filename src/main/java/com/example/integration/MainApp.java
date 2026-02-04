@@ -13,6 +13,12 @@ import java.awt.event.*;
 import java.text.NumberFormat;
 import java.util.concurrent.*;
 
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import net.objecthunter.exp4j.Expression;
+import net.objecthunter.exp4j.ExpressionBuilder;
+
+
 import net.objecthunter.exp4j.Expression;
 import net.objecthunter.exp4j.ExpressionBuilder;
 
@@ -266,6 +272,63 @@ public class MainApp {
         recentPanel.setBorder(new TitledBorder("Zadnjih 5 rezultata"));
         recentModel = new DefaultListModel<>();
         recentList = new JList<>(recentModel);
+        
+        recentList.addListSelectionListener(e -> {
+            if (e.getValueIsAdjusting()) {
+                return;
+            }
+            if (uiBusy) {
+                return;
+            }
+            String s = recentList.getSelectedValue();
+            if (s == null || s.isBlank()) {
+                return;
+            }
+
+            Pattern p = Pattern.compile(
+                    "^(.*?)\\s*\\[\\s*([-+0-9.]+)\\s*,\\s*([-+0-9.]+)\\s*\\]\\s*=\\s*([-+0-9.Ee]+)\\s*$"
+            );
+            Matcher m = p.matcher(s);
+            if (!m.matches()) {
+                return;
+            }
+
+            String funcText = m.group(1).trim();
+            double a = Double.parseDouble(m.group(2));
+            double b = Double.parseDouble(m.group(3));
+            double res = Double.parseDouble(m.group(4));
+
+            lblResult.setText(String.format("Rezultat: %.12f", res));
+            lblStatus.setText("Status: odabrano iz povijesti");
+
+            txtA.setValue(a);
+            txtB.setValue(b);
+
+            String fLower = funcText.toLowerCase();
+            if (fLower.contains("sin")) {
+                plotPanel.setFunction(Math::sin, a, b);
+            } else if (fLower.contains("cos")) {
+                plotPanel.setFunction(Math::cos, a, b);
+            } else if (fLower.contains("x^2") || fLower.contains("x*x")) {
+                plotPanel.setFunction(x -> x * x, a, b);
+            } else {
+                try {
+                    Expression ex = new ExpressionBuilder(funcText).variable("x").build();
+                    DoubleUnaryOperator fn = (x) -> {
+                        ex.setVariable("x", x);
+                        return ex.evaluate();
+                    };
+                    plotPanel.setFunction(fn, a, b);
+                } catch (Exception ex) {
+                    JOptionPane.showMessageDialog(frame,
+                            "Ne mogu nacrtati graf iz povijesti",
+                            "Greška", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        });
+
+
+        
         recentList.setVisibleRowCount(5);
         recentList.setFixedCellWidth(260);
         recentPanel.add(new JScrollPane(recentList), BorderLayout.CENTER);
@@ -513,6 +576,7 @@ public class MainApp {
                     } finally {
                         setUiBusy(false);
                     }
+                    lblStatus.setText("Status: gotov");
                 }
             };
             worker.execute();
@@ -528,6 +592,7 @@ public class MainApp {
         plotPanel.setFunction(resolveFunction(functionId), a, b);
 
         setUiBusy(true);
+        lblStatus.setText("Status: računam...");
 
         Future<IntegrationJob> fut = service.submit(cmbFunc.getSelectedItem().toString(), a, b, n, functionId, algoId, preferNative,null);
 
@@ -559,8 +624,11 @@ public class MainApp {
         };
         worker.execute();
     }
+    
+    private boolean uiBusy = false;
 
     private void setUiBusy(boolean busy) {
+        uiBusy = busy;
         btnStart.setEnabled(!busy);
         progressBar.setIndeterminate(busy);
         progressBar.setString(busy ? "Računam..." : "");
