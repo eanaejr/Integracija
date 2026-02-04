@@ -542,29 +542,6 @@ public class MainApp {
                 return;
             }
 
-            String eLower = expr.replace(" ", "").toLowerCase();
-
-            if (eLower.equals("1/x") && a <= 0 && b >= 0) {
-                JOptionPane.showMessageDialog(frame,
-                        "Funkcija nije definirana na cijelom intervalu.",
-                        "Greška", JOptionPane.ERROR_MESSAGE);
-                return;
-            }
-
-            if (eLower.contains("log(") && a <= 0) {
-                JOptionPane.showMessageDialog(frame,
-                        "Funkcija nije definirana na cijelom intervalu.",
-                        "Greška", JOptionPane.ERROR_MESSAGE);
-                return;
-            }
-
-            if (eLower.contains("sqrt(") && a < 0) {
-                JOptionPane.showMessageDialog(frame,
-                        "Funkcija nije definirana na cijelom intervalu.",
-                        "Greška", JOptionPane.ERROR_MESSAGE);
-                return;
-            }
-
             int algoId = cmbAlgo.getSelectedIndex();
 
             //pretvaranje expr u doubleUnaryOperator
@@ -580,7 +557,7 @@ public class MainApp {
             //Ako funkcija nije definirana u tocki intervala javlja se greska
             if (!isFunctionDefinedOnInterval(fn, a, b)) {
                 JOptionPane.showMessageDialog(frame,
-                        "Funkcija nije definirana na cijelom intervalu.",
+                        "Funkcija nije definirana u cijelom intervalu.",
                         "Greška", JOptionPane.ERROR_MESSAGE);
                 return;
             }
