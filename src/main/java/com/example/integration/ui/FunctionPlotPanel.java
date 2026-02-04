@@ -13,6 +13,7 @@ import java.awt.*;
 import java.util.function.DoubleUnaryOperator;
 
 public class FunctionPlotPanel extends JPanel {
+
     private DoubleUnaryOperator function;
     private double a, b;
     private int samples = 500;
@@ -27,11 +28,13 @@ public class FunctionPlotPanel extends JPanel {
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
-        if (function == null) return;
+        if (function == null) {
+            return;
+        }
 
         Graphics2D g2 = (Graphics2D) g;
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
-                            RenderingHints.VALUE_ANTIALIAS_ON);
+                RenderingHints.VALUE_ANTIALIAS_ON);
 
         int w = getWidth();
         int h = getHeight();
@@ -40,16 +43,12 @@ public class FunctionPlotPanel extends JPanel {
         // osi
         g2.setColor(Color.GRAY);
         //g2.drawLine(margin, h - margin, w - margin, h - margin); // x
-        
-        
-        
+
         g2.setColor(Color.BLACK);
         g2.drawString(String.format("%.2f", a), margin - 10, h - margin + 15);
-        g2.drawString(String.format("%.2f", b),w - margin - 10, h - margin + 15);
+        g2.drawString(String.format("%.2f", b), w - margin - 10, h - margin + 15);
 
-        
         //g2.drawLine(margin, margin, margin, h - margin);        // y
-
         double minY = Double.POSITIVE_INFINITY;
         double maxY = Double.NEGATIVE_INFINITY;
 
@@ -73,44 +72,58 @@ public class FunctionPlotPanel extends JPanel {
         // skaliranje
         double scaleX = (w - 2.0 * margin) / (b - a);
         double scaleY = (h - 2.0 * margin) / (maxY - minY);
-        
+
+        // izračun gdje je (0,0) u panelu (ako je u rasponu)
         Integer zeroX = null;
         Integer zeroY = null;
-        
+
+// gdje je x=0 na ekranu (vertikalna os)
+        if (a <= 0 && b >= 0) {
+            zeroX = (int) (margin + (0 - a) * scaleX);
+        }
+
+// gdje je y=0 na ekranu (horizontalna os)
+        if (minY <= 0 && maxY >= 0) {
+            zeroY = (int) (h - margin - (0 - minY) * scaleY);
+        }
+
         g2.setColor(Color.GRAY);
 
-        // x-os
+        // x-os (y=0 ako postoji, inače dolje)
         int xAxisY = (zeroY != null) ? zeroY : (h - margin);
         g2.drawLine(margin, xAxisY, w - margin, xAxisY);
 
-        // y-os
+        // y-os (x=0 ako postoji, inače lijevo)
         int yAxisX = (zeroX != null) ? zeroX : margin;
         g2.drawLine(yAxisX, margin, yAxisX, h - margin);
-        
+
+        // oznake a i b ispod x-osi
         int labelY = xAxisY + 15;
+        g2.setColor(Color.BLACK);
+        g2.drawString(String.format("%.2f", a), margin - 10, labelY);
+        g2.drawString(String.format("%.2f", b), w - margin - 10, labelY);
+
+        // oznaka 0 na sjecištu (ako postoji)
+        if (zeroX != null && zeroY != null) {
+            g2.drawString("0", zeroX - 6, zeroY + 15);
+        }
 
         g2.setColor(Color.BLACK);
         g2.drawString(String.format("%.2f", a), margin - 10, labelY);
         g2.drawString(String.format("%.2f", b),
                 w - margin - 10, labelY);
-        
+
         if (zeroX != null && zeroY != null) {
             g2.drawString("0", zeroX - 8, zeroY + 15);
-        }
-
-
-        if (a <= 0 && b >= 0) {
-            zeroX = (int) (margin + (-a) * scaleX);
-        }
-
-        if (minY <= 0 && maxY >= 0) {
-            zeroY = (int) (h - margin - (-minY) * scaleY);
         }
 
         // obojaj površinu ispod grafa
         g2.setColor(new Color(100, 150, 255, 80));
         Polygon area = new Polygon();
-        area.addPoint(margin, h - margin);
+        
+        int baseY = (zeroY != null) ? zeroY : (h - margin);
+
+        area.addPoint(margin, baseY);
 
         for (int i = 0; i < samples; i++) {
             int px = (int) (margin + (xs[i] - a) * scaleX);
@@ -118,7 +131,7 @@ public class FunctionPlotPanel extends JPanel {
             area.addPoint(px, py);
         }
 
-        area.addPoint(margin + (int)((b - a) * scaleX), h - margin);
+        area.addPoint(margin + (int)((b - a) * scaleX), baseY);
         g2.fill(area);
 
         // linija funkcije
@@ -126,8 +139,8 @@ public class FunctionPlotPanel extends JPanel {
         for (int i = 0; i < samples - 1; i++) {
             int x1 = (int) (margin + (xs[i] - a) * scaleX);
             int y1 = (int) (h - margin - (ys[i] - minY) * scaleY);
-            int x2 = (int) (margin + (xs[i+1] - a) * scaleX);
-            int y2 = (int) (h - margin - (ys[i+1] - minY) * scaleY);
+            int x2 = (int) (margin + (xs[i + 1] - a) * scaleX);
+            int y2 = (int) (h - margin - (ys[i + 1] - minY) * scaleY);
             g2.drawLine(x1, y1, x2, y2);
         }
         // dodavanje nule na grafu
