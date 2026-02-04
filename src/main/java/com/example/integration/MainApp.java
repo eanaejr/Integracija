@@ -1,6 +1,8 @@
 package com.example.integration;
 
 import com.example.integration.model.IntegrationJob;
+import com.example.integration.ui.FunctionPlotPanel;
+import java.util.function.DoubleUnaryOperator;
 import java.util.List;
 
 import javax.swing.*;
@@ -17,6 +19,8 @@ import net.objecthunter.exp4j.ExpressionBuilder;
 public class MainApp {
 
     private final IntegrationService service;
+    
+    private FunctionPlotPanel plotPanel;
 
     private JFrame frame;
     private JComboBox<String> cmbFunc;
@@ -248,8 +252,15 @@ public class MainApp {
         gc.gridwidth = 4;
         chkNative = new JCheckBox("Koristi JNI (ako je dostupno)");
         params.add(chkNative, gc);
-
-        root.add(params, BorderLayout.CENTER);
+        
+        plotPanel = new FunctionPlotPanel();
+        plotPanel.setPreferredSize(new Dimension(420, 320));
+        plotPanel.setBorder(new TitledBorder("Graf funkcije i integral"));
+        
+        JSplitPane centerSplit = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, params, plotPanel);
+        centerSplit.setResizeWeight(0.60); // lijevo parametri, desno graf
+        
+        root.add(centerSplit, BorderLayout.CENTER);
 
         JPanel recentPanel = new JPanel(new BorderLayout(4, 4));
         recentPanel.setBorder(new TitledBorder("Zadnjih 5 rezultata"));
@@ -325,6 +336,18 @@ public class MainApp {
         loadRecentResults();
         frame.setVisible(true);
     }
+    
+    private DoubleUnaryOperator resolveFunction(int functionId) {
+        return switch (functionId) {
+            case 0 ->
+                Math::sin;
+            case 1 ->
+                Math::cos;
+            default ->
+                (x) -> x * x;
+        };
+    }
+
 
     private void loadRecentResults() {
         SwingWorker<List<IntegrationJob>, IntegrationJob> loader = new SwingWorker<>() {
@@ -451,6 +474,13 @@ public class MainApp {
             int algoId = cmbAlgo.getSelectedIndex();
 
             setUiBusy(true);
+            
+            Expression e = new ExpressionBuilder(expr).variable("x").build();
+            DoubleUnaryOperator fn = (x) -> {
+                e.setVariable("x", x);
+                return e.evaluate();
+            };
+            plotPanel.setFunction(fn, a, b);
 
             Future<IntegrationJob> fut = service.submit(
                     expr,          // functionName
@@ -494,6 +524,8 @@ public class MainApp {
         int functionId = cmbFunc.getSelectedIndex();
         int algoId = cmbAlgo.getSelectedIndex();
         boolean preferNative = chkNative.isSelected();
+        
+        plotPanel.setFunction(resolveFunction(functionId), a, b);
 
         setUiBusy(true);
 
@@ -518,6 +550,8 @@ public class MainApp {
                 } catch (ExecutionException ee) {
                     lblStatus.setText("Status: greška - " + ee.getCause().getMessage());
                     JOptionPane.showMessageDialog(frame, "Došlo je do greške: " + ee.getCause().getMessage(), "Greška", JOptionPane.ERROR_MESSAGE);
+                } catch (Exception e) {
+                    lblStatus.setText("Status: greška");
                 } finally {
                     setUiBusy(false);
                 }
