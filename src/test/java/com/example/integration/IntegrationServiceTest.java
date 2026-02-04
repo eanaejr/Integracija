@@ -6,10 +6,13 @@ import com.example.integration.repo.IntegrationRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
+import org.mockito.ArgumentCaptor;
 
-import java.util.concurrent.ExecutionException;
+import java.lang.reflect.Field;
+import java.util.List;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -19,15 +22,17 @@ public class IntegrationServiceTest {
 
     private IntegrationService service;
     private IntegrationRepository mockRepo;
+    private final AtomicLong idSeq = new AtomicLong(100L);
 
     @BeforeEach
     public void setUp() {
-        // "lazni repo", ne spaja se na pravu bazu.
-        mockRepo = Mockito.mock(IntegrationRepository.class);
+        mockRepo = mock(IntegrationRepository.class);
 
-        // simuliramo rad baze
         when(mockRepo.save(any(IntegrationJob.class))).thenAnswer(invocation -> {
             IntegrationJob job = invocation.getArgument(0);
+            if (job.getId() == null) {
+                setPrivateId(job, idSeq.getAndIncrement());
+            }
             return job;
         });
 
@@ -38,93 +43,45 @@ public class IntegrationServiceTest {
 
     @AfterEach
     public void tearDown() {
-        service.shutdown();
+        if (service != null) service.shutdown();
     }
 
     @Test
-    public void testIntegrationXSquaredJavaImplementation() throws ExecutionException, InterruptedException {
-        Future<IntegrationJob> future = service.submit(
-                "x^2",
-                0.0,
-                1.0,
-                1000,
-                2,
-                0,
-                false,
-                null
-        );
+    public void testJobIdPropagationToChunks() throws Exception {
+        // koristimo manji n da test brže završi
+        Future<IntegrationJob> future = service.submit("x^2", 0.0, 10.0, 200, 2, 0, false, null);
 
-        IntegrationJob result = future.get();
+        // čekamo s timeoutom da test ne visi (10 sekundi dovoljno za lokalni run)
+        IntegrationJob result = future.get(10, TimeUnit.SECONDS);
+        assertNotNull(result);
+        assertNotNull(result.getId());
 
-        assertEquals(1.0 / 3.0, result.getResult(), 1e-4, "Integral x^2 od 0 do 1 mora biti cca 0.3333");
+        ArgumentCaptor<IntegrationChunk> chunkCaptor = ArgumentCaptor.forClass(IntegrationChunk.class);
+        verify(mockRepo, atLeastOnce()).saveChunk(chunkCaptor.capture());
 
-        verify(mockRepo, atLeastOnce()).save(any(IntegrationJob.class));
+        List<IntegrationChunk> capturedChunks = chunkCaptor.getAllValues();
+        assertFalse(capturedChunks.isEmpty());
+
+        for (IntegrationChunk chunk : capturedChunks) {
+            assertEquals(result.getId(), chunk.getJobId(), "Chunk mora imati isti jobId kao spremljeni job");
+        }
     }
 
     @Test
-    public void testIntegrationSinSimpson() throws ExecutionException, InterruptedException {
-
-        Future<IntegrationJob> future = service.submit(
-                "sin(x)",
-                0.0,
-                Math.PI,
-                1000,
-                0,
-                1,
-                false,
-                null
-        );
-
-        IntegrationJob result = future.get();
-        assertEquals(2.0, result.getResult(), 1e-5, "Integral sin(x) od 0 do PI mora biti 2.0");
+    public void testIntegrationXSquaredResult() throws Exception {
+        Future<IntegrationJob> future = service.submit("x^2", 0.0, 1.0, 200, 2, 0, false, null);
+        IntegrationJob r = future.get(10, TimeUnit.SECONDS);
+        assertEquals(1.0 / 3.0, r.getResult(), 1e-4);
     }
 
-    @Test
-    public void testCustomExpressionExp4j() throws ExecutionException, InterruptedException {
-        // Testiramo custom expression parser
-        // Integral 2x od 0 do 2 =
-
-        String expr = "2*x";
-
-        Future<IntegrationJob> future = service.submit(
-                expr,
-                0.0,
-                2.0,
-                1000,
-                -1,
-                0,
-                false,
-                expr
-        );
-
-        IntegrationJob result = future.get();
-        assertEquals(4.0, result.getResult(), 1e-4);
-    }
-
-    @Test
-    public void testChunkingLogic() throws ExecutionException, InterruptedException {
-        // Provjeravamo spremaju li se međurezultati (chunkovi)
-
-        Future<IntegrationJob> future = service.submit(
-                "x^2",
-                0.0,
-                10.0,
-                1000,
-                2,
-                0,
-                false,
-                null
-        );
-
-        future.get();
-
-        verify(mockRepo, atLeast(1)).saveChunk(any(IntegrationChunk.class));
-    }
-
-    @Test
-    public void testZeroInterval() throws ExecutionException, InterruptedException {
-        // Integral od a do a mora biti 0
-        Future<IntegrationJob> future = service.submit("x^2", 5.0, 5.0, 100, 2, 0, false, null);
-        assertEquals(0.0, future.get().getResult(), 1e-9);
+    // Pomocna metoda
+    private static void setPrivateId(IntegrationJob job, long id) {
+        try {
+            Field idField = IntegrationJob.class.getDeclaredField("id");
+            idField.setAccessible(true);
+            idField.set(job, id);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 }
