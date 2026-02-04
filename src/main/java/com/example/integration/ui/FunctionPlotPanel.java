@@ -28,9 +28,7 @@ public class FunctionPlotPanel extends JPanel {
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
-        if (function == null) {
-            return;
-        }
+        if (function == null) return;
 
         Graphics2D g2 = (Graphics2D) g;
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
@@ -40,15 +38,7 @@ public class FunctionPlotPanel extends JPanel {
         int h = getHeight();
         int margin = 40;
 
-        // osi
-        g2.setColor(Color.GRAY);
-        //g2.drawLine(margin, h - margin, w - margin, h - margin); // x
-
-        g2.setColor(Color.BLACK);
-        g2.drawString(String.format("%.2f", a), margin - 10, h - margin + 15);
-        g2.drawString(String.format("%.2f", b), w - margin - 10, h - margin + 15);
-
-        //g2.drawLine(margin, margin, margin, h - margin);        // y
+        // --- sample funkciju ---
         double minY = Double.POSITIVE_INFINITY;
         double maxY = Double.NEGATIVE_INFINITY;
 
@@ -58,10 +48,20 @@ public class FunctionPlotPanel extends JPanel {
         for (int i = 0; i < samples; i++) {
             double x = a + i * (b - a) / (samples - 1);
             double y = function.applyAsDouble(x);
+
             xs[i] = x;
             ys[i] = y;
-            minY = Math.min(minY, y);
-            maxY = Math.max(maxY, y);
+
+            if (Double.isFinite(y)) {
+                minY = Math.min(minY, y);
+                maxY = Math.max(maxY, y);
+            }
+        }
+
+        // fallback ako je sve NaN/Inf
+        if (minY == Double.POSITIVE_INFINITY) {
+            minY = -1;
+            maxY = 1;
         }
 
         if (minY == maxY) {
@@ -69,87 +69,90 @@ public class FunctionPlotPanel extends JPanel {
             maxY += 1;
         }
 
-        // skaliranje
-        double scaleX = (w - 2.0 * margin) / (b - a);
+        // --- uključi 0 u raspon da osi uvijek prolaze kroz nulu ---
+        double minX = Math.min(a, b);
+        double maxX = Math.max(a, b);
+        minX = Math.min(minX, 0.0);
+        maxX = Math.max(maxX, 0.0);
+
+        minY = Math.min(minY, 0.0);
+        maxY = Math.max(maxY, 0.0);
+
+        // sigurnost protiv 0 širine
+        if (minX == maxX) { minX -= 1; maxX += 1; }
+        if (minY == maxY) { minY -= 1; maxY += 1; }
+
+        // --- skaliranje ---
+        double scaleX = (w - 2.0 * margin) / (maxX - minX);
         double scaleY = (h - 2.0 * margin) / (maxY - minY);
 
-        // izračun gdje je (0,0) u panelu (ako je u rasponu)
-        Integer zeroX = null;
-        Integer zeroY = null;
+        // funkcije mapiranja (bez lambdi)
+        // px = margin + (x - minX) * scaleX
+        // py = h - margin - (y - minY) * scaleY
 
-// gdje je x=0 na ekranu (vertikalna os)
-        if (a <= 0 && b >= 0) {
-            zeroX = (int) (margin + (0 - a) * scaleX);
-        }
+        int zeroX = (int) Math.round(margin + (0.0 - minX) * scaleX);      // x=0
+        int zeroY = (int) Math.round(h - margin - (0.0 - minY) * scaleY);  // y=0
 
-// gdje je y=0 na ekranu (horizontalna os)
-        if (minY <= 0 && maxY >= 0) {
-            zeroY = (int) (h - margin - (0 - minY) * scaleY);
-        }
-
+        // --- osi ---
         g2.setColor(Color.GRAY);
+        g2.drawLine(margin, zeroY, w - margin, zeroY); // x-os (y=0)
+        g2.drawLine(zeroX, margin, zeroX, h - margin); // y-os (x=0)
 
-        // x-os (y=0 ako postoji, inače dolje)
-        int xAxisY = (zeroY != null) ? zeroY : (h - margin);
-        g2.drawLine(margin, xAxisY, w - margin, xAxisY);
-
-        // y-os (x=0 ako postoji, inače lijevo)
-        int yAxisX = (zeroX != null) ? zeroX : margin;
-        g2.drawLine(yAxisX, margin, yAxisX, h - margin);
-
-        // oznake a i b ispod x-osi
-        int labelY = xAxisY + 15;
+        // 0 na sjecištu
         g2.setColor(Color.BLACK);
-        g2.drawString(String.format("%.2f", a), margin - 10, labelY);
-        g2.drawString(String.format("%.2f", b), w - margin - 10, labelY);
+        g2.drawString("0", zeroX - 6, zeroY + 15);
 
-        // oznaka 0 na sjecištu (ako postoji)
-        if (zeroX != null && zeroY != null) {
-            g2.drawString("0", zeroX - 6, zeroY + 15);
-        }
+        // oznake a i b (dolje)
+        int bottomY = h - margin + 15;
+        int aPx = (int) Math.round(margin + (a - minX) * scaleX);
+        int bPx = (int) Math.round(margin + (b - minX) * scaleX);
+        g2.drawString(String.format("%.2f", a), aPx - 10, bottomY);
+        g2.drawString(String.format("%.2f", b), bPx - 10, bottomY);
 
-        g2.setColor(Color.BLACK);
-        g2.drawString(String.format("%.2f", a), margin - 10, labelY);
-        g2.drawString(String.format("%.2f", b),
-                w - margin - 10, labelY);
-
-        if (zeroX != null && zeroY != null) {
-            g2.drawString("0", zeroX - 8, zeroY + 15);
-        }
-
-        // obojaj površinu ispod grafa
+        // --- sjenčanje: između funkcije i x-osi (y=0) ---
         g2.setColor(new Color(100, 150, 255, 80));
         Polygon area = new Polygon();
-        
-        int baseY = (zeroY != null) ? zeroY : (h - margin);
 
-        area.addPoint(margin, baseY);
+        // start na x-osi u x=a
+        area.addPoint(aPx, zeroY);
 
+        // točke krivulje
         for (int i = 0; i < samples; i++) {
-            int px = (int) (margin + (xs[i] - a) * scaleX);
-            int py = (int) (h - margin - (ys[i] - minY) * scaleY);
+            double y = ys[i];
+            if (!Double.isFinite(y)) continue;
+
+            int px = (int) Math.round(margin + (xs[i] - minX) * scaleX);
+            int py = (int) Math.round(h - margin - (y - minY) * scaleY);
             area.addPoint(px, py);
         }
 
-        area.addPoint(margin + (int)((b - a) * scaleX), baseY);
+        // zatvori na x-osi u x=b
+        area.addPoint(bPx, zeroY);
+
         g2.fill(area);
 
-        // linija funkcije
+        // --- linija funkcije ---
         g2.setColor(Color.BLUE);
-        for (int i = 0; i < samples - 1; i++) {
-            int x1 = (int) (margin + (xs[i] - a) * scaleX);
-            int y1 = (int) (h - margin - (ys[i] - minY) * scaleY);
-            int x2 = (int) (margin + (xs[i + 1] - a) * scaleX);
-            int y2 = (int) (h - margin - (ys[i + 1] - minY) * scaleY);
-            g2.drawLine(x1, y1, x2, y2);
-        }
-        // dodavanje nule na grafu
-        if (a < 0 && b > 0) {
-            if (zeroX != null && zeroY != null) {
-                g2.drawString("0", zeroX - 5, zeroY + 15);
+
+        int prevX = 0, prevY = 0;
+        boolean hasPrev = false;
+
+        for (int i = 0; i < samples; i++) {
+            double y = ys[i];
+            if (!Double.isFinite(y)) {
+                hasPrev = false;
+                continue;
             }
 
-        }
+            int px = (int) Math.round(margin + (xs[i] - minX) * scaleX);
+            int py = (int) Math.round(h - margin - (y - minY) * scaleY);
 
+            if (hasPrev) {
+                g2.drawLine(prevX, prevY, px, py);
+            }
+            prevX = px;
+            prevY = py;
+            hasPrev = true;
+        }
     }
 }
