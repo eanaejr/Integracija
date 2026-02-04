@@ -41,7 +41,14 @@ public class JniIntegrator {
         return switch (functionId) {
             case 0 -> Math.sin(x);
             case 1 -> Math.cos(x);
-            default -> x * x;
+            case 2 -> x * x;
+            case 3 -> Math.tan(x);
+            case 4 -> Math.exp(x);
+            case 5 -> Math.sqrt(x);
+            case 6 -> 1.0 / x;
+            case 7 -> Math.log(x);     // log = ln
+            case 8 -> Math.log10(x);   // log10
+            default -> 0.0;
         };
     }
 

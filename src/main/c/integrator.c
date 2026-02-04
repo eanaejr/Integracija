@@ -4,10 +4,17 @@
 
 static double f(double x, int functionId) {
     switch (functionId) {
-        case 0: return sin(x);
-        case 1: return cos(x);
-        default: return x * x;
-    }
+            case 0: return sin(x);
+            case 1: return cos(x);
+            case 2: return x * x;
+            case 3: return tan(x);
+            case 4: return exp(x);
+            case 5: return sqrt(x);
+            case 6: return 1.0 / x;
+            case 7: return log(x);     // log = ln
+            case 8: return log10(x);   // log10
+            default: return 0.0;
+        }
 }
 
 static double integrate_trapezoid(double a, double b, int n, int functionId) {
