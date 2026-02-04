@@ -33,7 +33,6 @@ public class MainApp {
     private JTextField txtB;
     private JSpinner spnN;
     private JComboBox<String> cmbAlgo;
-    private JCheckBox chkNative;
     private JButton btnStart;
     private JLabel lblStatus;
     private JLabel lblResult;
@@ -252,8 +251,10 @@ public class MainApp {
         gc.gridx = 0;
         gc.gridy = row;
         gc.gridwidth = 4;
-        chkNative = new JCheckBox("Koristi JNI (ako je dostupno)");
-        params.add(chkNative, gc);
+
+        //Maknut JNI checkbox
+        //chkNative = new JCheckBox("Koristi JNI (ako je dostupno)");
+        //params.add(chkNative, gc);
         
         plotPanel = new FunctionPlotPanel();
         plotPanel.setPreferredSize(new Dimension(420, 320));
@@ -564,14 +565,16 @@ public class MainApp {
 
         int functionId = cmbFunc.getSelectedIndex();
         int algoId = cmbAlgo.getSelectedIndex();
-        boolean preferNative = chkNative.isSelected();
         
         plotPanel.setFunction(resolveFunction(functionId), a, b);
 
         setUiBusy(true);
         lblStatus.setText("Status: računam...");
 
-        Future<IntegrationJob> fut = service.submit(cmbFunc.getSelectedItem().toString(), a, b, n, functionId, algoId, preferNative,null);
+        //preferNative uvijek true ali necemo sve mijenjati negosamo staviti true umjesto svakog preferNative
+        //to radimo jer smo maknuli JNI checkbox iz UI-a
+        //JNI je interna optimizacija a ne UI opcija
+        Future<IntegrationJob> fut = service.submit(cmbFunc.getSelectedItem().toString(), a, b, n, functionId, algoId, true,null);
 
         SwingWorker<IntegrationJob, Void> worker = new SwingWorker<>() {
             @Override
