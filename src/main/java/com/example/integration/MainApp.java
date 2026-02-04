@@ -278,42 +278,47 @@ public class MainApp {
             String fLower = funcText.toLowerCase().replace(" ", "");
 
             // Predefined (crtamo direktno bez exp4j)
-            if (fLower.equals("sin(x)") || fLower.contains("sin(")) {
+            if (fLower.equals("sin(x)")) {
                 plotPanel.setFunction(Math::sin, a, b);
 
-            } else if (fLower.equals("cos(x)") || fLower.contains("cos(")) {
+            } else if (fLower.equals("cos(x)")) {
                 plotPanel.setFunction(Math::cos, a, b);
 
-            } else if (fLower.equals("x^2") || fLower.contains("x^2") || fLower.contains("x*x")) {
+            } else if (fLower.equals("x^2") || fLower.equals("x*x")) {
                 plotPanel.setFunction(x -> x * x, a, b);
 
-            } else if (fLower.equals("tan(x)") || fLower.contains("tan(")) {
+            } else if (fLower.equals("tan(x)")) {
                 plotPanel.setFunction(Math::tan, a, b);
 
-            } else if (fLower.equals("exp(x)") || fLower.contains("exp(")) {
+            } else if (fLower.equals("exp(x)")) {
                 plotPanel.setFunction(Math::exp, a, b);
 
-            } else if (fLower.equals("sqrt(x)") || fLower.contains("sqrt(")) {
+            } else if (fLower.equals("sqrt(x)")) {
                 plotPanel.setFunction(Math::sqrt, a, b);
 
-            } else if (fLower.equals("1/x") || fLower.contains("1/x")) {
+            } else if (fLower.equals("1/x")) {
                 plotPanel.setFunction(x -> 1.0 / x, a, b);
 
-            } else if (fLower.equals("log10(x)") || fLower.contains("log10(")) {
+            } else if (fLower.equals("log10(x)")) {
                 plotPanel.setFunction(Math::log10, a, b);
 
-            } else if (fLower.equals("log(x)") || (fLower.contains("log(") && !fLower.contains("log10("))) {
+            } else if (fLower.equals("log(x)")) {
                 // log(x) tretiramo kao prirodni log
                 plotPanel.setFunction(Math::log, a, b);
 
             } else {
                 // Custom expression (exp4j)
                 try {
-                    Expression ex = new ExpressionBuilder(funcText).variable("x").build();
+                    ThreadLocal<Expression> tl = ThreadLocal.withInitial(()
+                            -> new ExpressionBuilder(funcText).variable("x").build()
+                    );
+
                     DoubleUnaryOperator fn = (x) -> {
+                        Expression ex = tl.get();
                         ex.setVariable("x", x);
                         return ex.evaluate();
                     };
+
                     plotPanel.setFunction(fn, a, b);
                 } catch (Exception ex) {
                     JOptionPane.showMessageDialog(frame,
