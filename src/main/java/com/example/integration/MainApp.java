@@ -460,13 +460,17 @@ public class MainApp {
         int samples = 1000;
         for (int i = 0; i <= samples; i++) {
             double x = a + i * (b - a) / samples;
-            double val = fn.applyAsDouble(x);
-
-            if (Double.isNaN(val) || Double.isInfinite(val)) {
+            try {
+                double val = fn.applyAsDouble(x);
+                if (Double.isNaN(val) || Double.isInfinite(val)) {
+                    return false;
+                }
+            } catch (Exception ex) {
                 return false;
             }
         }
         return true;
+
     }
 
     private void loadRecentResults() {
@@ -600,14 +604,16 @@ public class MainApp {
             int algoId = cmbAlgo.getSelectedIndex();
 
             //pretvaranje expr u doubleUnaryOperator
-            Expression e = new ExpressionBuilder(expr)
-                    .variable("x")
-                    .build();
+            ThreadLocal<Expression> tl = ThreadLocal.withInitial(()
+                    -> new ExpressionBuilder(expr).variable("x").build()
+            );
 
             DoubleUnaryOperator fn = (x) -> {
-                e.setVariable("x", x);
-                return e.evaluate();
+                Expression ex = tl.get();
+                ex.setVariable("x", x);
+                return ex.evaluate();
             };
+
 
             //Ako funkcija nije definirana u tocki intervala javlja se greska
             if (!isFunctionDefinedOnInterval(fn, a, b)) {
