@@ -21,8 +21,11 @@ public class IntegrationService {
     private final JniIntegrator integrator;
 
     public IntegrationService(int threads) {
+        this(threads, new IntegrationRepository());
+    }
+    public IntegrationService(int threads, IntegrationRepository repo) {
         this.executor = Executors.newFixedThreadPool(threads);
-        this.repo = new IntegrationRepository();
+        this.repo = repo;
         this.integrator = new JniIntegrator();
     }
 
