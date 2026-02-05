@@ -55,8 +55,8 @@ JNIEXPORT jdouble JNICALL Java_com_example_integration_JniIntegrator_integrateNa
 {
 
     //test koji provjerava radi li JNI
-    /*printf("JNI CALLED\n");
-    fflush(stdout);*/
+    printf("JNI CALLED\n");
+    fflush(stdout);
 
 
     (void)env; (void)obj;

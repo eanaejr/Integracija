@@ -65,12 +65,16 @@ gcc -shared -o integrator.dll integrator.c ^
 Iz root direktorija
 
 ### Linux
-<pre>java -Djava.library.path=src/main/c \
+<pre>cd ../../..
+
+java -Djava.library.path=src/main/c \
  -jar target/jni-integration-0.1.0-SNAPSHOT.jar
 </pre>
 
 ### Windows
-<pre>java -Djava.library.path=src\main\c ^
+<pre>cd ../../..
+
+java -Djava.library.path=src\main\c ^
  -jar target\jni-integration-0.1.0-SNAPSHOT.jar
 </pre>
 
